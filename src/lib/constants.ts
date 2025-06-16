@@ -1,0 +1,5 @@
+export const HALVING_BLOCK = 210000;
+export const DIFFICULTY_ADJUSTMENT_BLOCK = 2016;
+export const GENESIS_BLOCK_DATE = new Date('2009-01-03T18:15:05Z');
+export const GENESIS_BLOCK_HEIGHT = 0;
+export const MAX_BLOCK_WEIGHT = 4000000;
