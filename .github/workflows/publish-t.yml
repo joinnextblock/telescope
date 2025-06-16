@@ -1,0 +1,39 @@
+name: Publish Test Version
+
+on:
+  push:
+    branches:
+      - t
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Publish test version
+        run: |
+          npm version $(echo ${{ steps.get_version.outputs.version }})-t.$(date +%Y%m%d%H%M%S) --no-git-tag-version
+          npm publish --access public --tag test
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 

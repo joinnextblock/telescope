@@ -1,0 +1,51 @@
+{
+  "name": "@joinnextblock/telescope",
+  "version": "0.0.2",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "A library for doing various calculations based on blockheight and time",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joinnextblock/telescope.git"
+  },
+  "homepage": "https://github.com/joinnextblock/telescope",
+  "bugs": {
+    "url": "https://github.com/joinnextblock/telescope/issues"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --coverage --verbose",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "publish": "changeset publish"
+  },
+  "keywords": [
+    "blockheight",
+    "time",
+    "bitcoin",
+    "blockchain",
+    "bitcoin-blockheight",
+    "bitcoin-blockheight-calculations",
+    "bitcoin-time-calculations"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3",
+    "@changesets/cli": "^2.27.1"
+  }
+}
