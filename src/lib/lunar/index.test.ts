@@ -2,7 +2,6 @@ import { create_lunar } from "./index";
 
 describe("Lunar", () => {
   const blockheight = 901632;
-
   it("should throw an error if the blockheight is not an integer", () => {
     expect(() => create_lunar(undefined)).toThrow("Blockheight must be an integer");
   });

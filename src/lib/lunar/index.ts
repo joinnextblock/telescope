@@ -63,6 +63,7 @@ export class Lunar extends Delta {
   // CYCLE FUNCTIONS
   get_cycle_index(): number {
     const lunar_cycle_index = Math.floor((this.get_position_in_year() / BLOCKS_IN_LUNAR_CYCLE));
+
     return lunar_cycle_index;
   }
 
