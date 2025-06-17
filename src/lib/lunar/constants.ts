@@ -12,21 +12,22 @@ export const LUNAR_PHASES = [
 ];
 
 export const LUNAR_CYCLES = [
-  { emoji: '🍊', name: 'Orange Moon' },
-  { emoji: '🪶', name: 'Bird Moon' },
-  { emoji: '🫂', name: 'Friend Moon' },
-  { emoji: '🐳', name: 'Whale Moon' },
-  { emoji: '🐂', name: 'Bull Moon' },
-  { emoji: '🐻', name: 'Bear Moon' },
-  { emoji: '🌽', name: 'Corn Moon' },
-  { emoji: '⚡', name: 'Lightning Moon' },
-  { emoji: '🥜', name: 'Squirrel Moon' },
-  { emoji: '🌊', name: 'Wave Moon' },
-  { emoji: '🧊', name: 'Ice Moon' },
-  { emoji: '💎', name: 'Diamond Moon' },
-  { emoji: '₿', name: "Satoshi's Moon" },
+  { emoji: '🍊', name: 'Orange' },
+  { emoji: '🪶', name: 'Bird' },
+  { emoji: '🫂', name: 'Friend' },
+  { emoji: '🐳', name: 'Whale' },
+  { emoji: '🐂', name: 'Bull' },
+  { emoji: '🐻', name: 'Bear' },
+  { emoji: '🌽', name: 'Corn' },
+  { emoji: '⚡', name: 'Lightning' },
+  { emoji: '🥜', name: 'Squirrel' },
+  { emoji: '🌊', name: 'Wave' },
+  { emoji: '🧊', name: 'Ice' },
+  { emoji: '💎', name: 'Diamond' },
+  { emoji: '₿', name: "Satoshi's" },
 ];
 
 
 export const BLOCKS_IN_LUNAR_PHASE = DIFFICULTY_ADJUSTMENT_BLOCK / 4
 export const BLOCKS_IN_LUNAR_CYCLE = DIFFICULTY_ADJUSTMENT_BLOCK * 2;
+export const BLOCKS_IN_LUNAR_YEAR = BLOCKS_IN_LUNAR_CYCLE * LUNAR_CYCLES.length;
