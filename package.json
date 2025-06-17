@@ -1,6 +1,6 @@
 {
   "name": "@joinnextblock/telescope",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -18,6 +18,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "watch": "tsc --watch",
     "test": "jest --coverage --verbose",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
