@@ -70,6 +70,7 @@ const isSpring = tidal.is_spring_tide();
 const isNeap = tidal.is_neap_tide();
 const description = tidal.get_tide_description();
 const emoji = tidal.get_tide_emoji();
+const display = tidal.get_tide_display(); // Formatted display string
 ```
 
 ### Standalone Functions
@@ -86,13 +87,15 @@ import {
   isSpringTide,
   isNeapTide,
   getTideDescription,
-  getTideEmoji
+  getTideEmoji,
+  getTideDisplay
 } from '@joinnextblock/telescope';
 
 const blockHeight = 100000;
 const tideType = getTideType(blockHeight);
 const height = getTideHeight(blockHeight);
 const phase = getTidePhase(blockHeight);
+const display = getTideDisplay(blockHeight); // Formatted display string
 ```
 
 ## Tide Height Calculation
@@ -119,7 +122,48 @@ Tide phases are determined by position within the event:
 - **Slack**: Peak/trough window (blocks 44-52)
 - **Falling**: Second half of event (blocks 53-95 for high tide)
 
+## Tide Display Formatting
+
+The `get_tide_display()` method (and standalone `getTideDisplay()`) returns a formatted string representation of the current tide state. For extreme tide values, it provides a simplified format:
+
+### Simplified Format (Extreme Values)
+
+- **+21 (Maximum High Tide)**: `"🌊 High Tide (+21)"`
+- **-21 (Maximum Low Tide)**: `"🏖️ Low Tide (-21)"`
+
+These simplified formats are used when the tide height is exactly at the maximum or minimum values.
+
+### Full Format (All Other Values)
+
+For all other tide heights, the format includes:
+- Emoji representation (🌊⬆️, 🌊⬇️, 🌊, 🏖️⬆️, 🏖️⬇️, 🏖️)
+- Tide type and phase description
+- Tide height in blocks with sign
+
+Example: `"🌊⬆️ Tide: high tide rising (spring tide) (+15 blocks)"`
+
+### Usage Examples
+
+```typescript
+// At maximum high tide (block 0, 84, 168, etc.)
+const displayHigh = getTideDisplay(0);
+// Returns: "🌊 High Tide (+21)"
+
+// At maximum low tide (block 42, 126, 210, etc.)
+const displayLow = getTideDisplay(42);
+// Returns: "🏖️ Low Tide (-21)"
+
+// At intermediate tide height
+const displayMid = getTideDisplay(21);
+// Returns: "🌊⬆️ Tide: high tide rising (0 blocks)" or similar
+
+// Using class instance
+const tidal = create_tidal(0);
+const display = tidal.get_tide_display();
+// Returns: "🌊 High Tide (+21)"
+```
+
 ## Integration with Observatory
 
-The tidal system works alongside existing moon phase calculations and is included in the Telescope interface, providing deterministic calculations requiring only block height as input.
+The tidal system works alongside existing moon phase calculations and is included in the Telescope interface, providing deterministic calculations requiring only block height as input. The formatted display strings are particularly useful for user-facing interfaces and event publishing.
 

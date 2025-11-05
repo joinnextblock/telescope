@@ -108,6 +108,7 @@ The Tidal module tracks and calculates tidal cycles based on Bitcoin blockheight
 - Spring and neap tide detection aligned with moon phases
 - Complete tidal cycle information and state
 - Human-readable descriptions and emoji representations
+- Formatted tide display strings with special handling for extreme values (+21/-21)
 
 #### Tidal System
 
@@ -129,6 +130,7 @@ The tidal system uses a simple linear mapping to represent block height in tidal
 - Tide phase: `getTidePhase(blockHeight)` or `tidal.get_tide_phase()`
 - Complete tidal state: `getTidalState(blockHeight)` or `tidal.get_tidal_state()`
 - Blocks until next tide: `getBlocksUntilNextTide(blockHeight)` or `tidal.get_blocks_until_next_tide()`
+- Tide display string: `getTideDisplay(blockHeight)` or `tidal.get_tide_display()` - Returns formatted display with simplified format for +21/-21 extremes
 - Special conditions: Spring tides align with new/full moons, neap tides with quarter moons
 
 ## Development
