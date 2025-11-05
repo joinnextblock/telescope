@@ -38,6 +38,26 @@ export class Delta {
     }
   }
 
+  /**
+   * Formats the blockheight into an astronomical date string.
+   * Format: AG_{halving}_{season}_{moon}_{position_in_cycle} (using _ for hashtag support)
+   * AG represents After Genesis, BG would represent Before Genesis
+   * Uses underscores instead of pipes to make it a valid hashtag
+   * Position in cycle is always 4 digits (padded with zeros)
+   * Note: Services should add # prefix if they want to make it a hashtag
+   * @param season_index - The solar season index (0-based)
+   * @param cycle_index - The lunar cycle index (0-based)
+   * @param position_in_cycle - The position within the lunar cycle (0-4032)
+   * @returns Formatted astronomical date string
+   */
+  get_formatted_date(season_index: number, cycle_index: number, position_in_cycle: number): string {
+    const halving = Math.floor(this.blockheight / constants.HALVING_BLOCK);
+    const paddedPosition = String(position_in_cycle).padStart(4, '0');
+    // All blocks are after genesis (AG), BG would be for negative block heights
+    const era = this.blockheight >= 0 ? 'AG' : 'BG';
+    return `${era}_${halving}_${season_index + 1}_${cycle_index + 1}_${paddedPosition}`;
+  }
+
 }
 
 /**
