@@ -4,12 +4,13 @@ import { create_lunar, Lunar } from "../lunar";
 import { LUNAR_PHASES } from "../lunar/constants";
 import {
   BLOCKS_PER_LUNAR_CYCLE,
-  BLOCKS_PER_TIDAL_EVENT,
-  TIDAL_EVENTS_PER_CYCLE,
-  COMPLETE_TIDAL_CYCLES,
-  SLACK_WATER_START,
-  SLACK_WATER_END,
-  SLACK_WATER_MIDPOINT,
+  TIDAL_HEIGHT_CYCLE_LENGTH,
+  SLACK_HIGH_START,
+  SLACK_HIGH_END,
+  SLACK_LOW_START,
+  SLACK_LOW_END,
+  SLACK_HIGH_MIDPOINT,
+  SLACK_LOW_MIDPOINT,
   MAX_HIGH_TIDE,
   MAX_LOW_TIDE,
 } from "./constants";
@@ -37,19 +38,17 @@ export enum TidePhase {
  */
 export interface TidalState {
   // Position tracking
-  eventNumber: number; // 0-41 (which tidal event in the lunar cycle)
-  cycleNumber: number; // 0-20 (which complete high-low cycle)
-  blocksIntoEvent: number; // 0-95 (position within current event)
-  blocksUntilNext: number; // 1-96 (blocks remaining to next event)
+  blocksIntoCycle: number; // 0-71 (position within 72-block cycle)
+  blocksUntilNext: number; // Blocks remaining to next high/low point
 
   // Tide characteristics
   type: TideType; // 'high' or 'low'
   phase: TidePhase; // 'rising', 'falling', 'slack_high', 'slack_low'
-  height: number; // 0.0 to 1.0 (normalized sine wave)
+  height: number; // -18 to +18 (tide height in blocks)
 
   // Timing
-  nextTideBlock: number; // Absolute block height of next tide
-  previousTideBlock: number; // Absolute block height of previous tide
+  nextTideBlock: number; // Absolute block height of next high/low point
+  previousTideBlock: number; // Absolute block height of previous high/low point
 
   // Special conditions
   isSpringTide: boolean; // Aligns with new/full moon
@@ -57,14 +56,14 @@ export interface TidalState {
 }
 
 /**
- * Information about a complete tidal cycle within a lunar month
+ * Information about the tidal height cycle
  */
 export interface TidalCycleInfo {
-  startBlock: number; // First block of this lunar cycle
-  endBlock: number; // Last block of this lunar cycle
-  totalEvents: number; // Always 42
-  highTides: number; // Always 21
-  lowTides: number; // Always 21
+  cycleLength: number; // Always 72 blocks
+  maxHighTide: number; // Always +18
+  maxLowTide: number; // Always -18
+  currentCycleStart: number; // First block of current 72-block cycle
+  currentCycleEnd: number; // Last block of current 72-block cycle
 }
 
 /**
@@ -81,6 +80,8 @@ const TIDE_EMOJIS: Record<string, string> = {
 
 /**
  * Tidal class for calculating tidal states based on Bitcoin block height
+ * Uses a continuous 72-block cycle: +18 at block 0, decreases to -18 at block 36, increases back to +18 at block 72
+ * System starts at high tide (+18 at block 0)
  * Extends Delta to inherit blockheight management
  */
 export class Tidal extends Delta {
@@ -103,29 +104,38 @@ export class Tidal extends Delta {
    */
   get_tidal_state(): TidalState {
     const blockHeight = this.get_blockheight();
-    const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-    const eventNumber = Math.floor(positionInCycle / BLOCKS_PER_TIDAL_EVENT);
-    const blocksIntoEvent = positionInCycle % BLOCKS_PER_TIDAL_EVENT;
-    const cycleNumber = Math.floor(eventNumber / 2);
-    const isHighTide = eventNumber % 2 === 0;
+    const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+    const tideHeight = this.get_tide_height();
 
-    const blocksUntilNext = BLOCKS_PER_TIDAL_EVENT - blocksIntoEvent;
+    // Determine tide type from height
+    const type = tideHeight > 0 ? TideType.HIGH : tideHeight < 0 ? TideType.LOW : TideType.HIGH;
 
-    // Calculate next and previous tide blocks
-    const nextTideBlock = blockHeight + blocksUntilNext;
-    const previousTideBlock =
-      blocksIntoEvent === 0
-        ? blockHeight - BLOCKS_PER_TIDAL_EVENT
-        : blockHeight - blocksIntoEvent;
+    // Calculate phase based on position in cycle
+    const phase = this.get_tide_phase();
+
+    // Calculate blocks until next high/low point
+    let blocksUntilNext: number;
+    let nextTideBlock: number;
+    let previousTideBlock: number;
+
+    if (blocksIntoCycle < 36) {
+      // In first half: heading to low tide at block 36
+      blocksUntilNext = 36 - blocksIntoCycle;
+      nextTideBlock = blockHeight + blocksUntilNext;
+      previousTideBlock = blockHeight - blocksIntoCycle; // Previous high at cycle start
+    } else {
+      // In second half: heading to high tide at block 72 (which is block 0 of next cycle)
+      blocksUntilNext = TIDAL_HEIGHT_CYCLE_LENGTH - blocksIntoCycle;
+      nextTideBlock = blockHeight + blocksUntilNext;
+      previousTideBlock = blockHeight - (blocksIntoCycle - 36); // Previous low at block 36
+    }
 
     return {
-      eventNumber,
-      cycleNumber,
-      blocksIntoEvent,
+      blocksIntoCycle,
       blocksUntilNext,
-      type: isHighTide ? TideType.HIGH : TideType.LOW,
-      phase: this.get_tide_phase_internal(blocksIntoEvent, isHighTide),
-      height: this.get_tide_height(), // Use the new simple calculation
+      type,
+      phase,
+      height: tideHeight,
       nextTideBlock,
       previousTideBlock,
       isSpringTide: this.is_spring_tide_internal(),
@@ -135,111 +145,101 @@ export class Tidal extends Delta {
 
   /**
    * Calculate tide height in blocks
-   * Returns -21 to +21 blocks (integer values)
-   * Pattern: +21 at block 0, decrease by 1 each block to -21, then increase by 1 back to +21
+   * Returns -18 to +18 blocks (integer values)
+   * Pattern: +18 at block 0, decrease by 1 each block to -18, then increase by 1 back to +18
+   * System starts at high tide (+18 at block 0)
    * Each block changes by exactly 1 block value
    */
   get_tide_height(): number {
-    return this.get_tide_height_internal(0, false); // Parameters not used with new calculation
-  }
+    const blockHeight = this.get_blockheight();
+    const positionInCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
 
-  /**
-   * Internal helper for tide height calculation
-   * Returns height in blocks: -21 to +21 (integer values)
-   * Simple pattern: +21 at block 0, decrease by 1 each block to -21, then increase by 1 back to +21
-   * Pattern: block 0 = +21, block 1 = +20, ..., block 42 = -21, block 43 = -20, ..., block 84 = +21 (then repeats)
-   * Each block changes by exactly 1 block value
-   */
-  private get_tide_height_internal(
-    blocksIntoEvent: number,
-    isHighTide: boolean
-  ): number {
-    // Calculate position within the 84-block cycle (+21 to -21 to +21)
-    // First 42 blocks: +21 down to -21
-    // Next 42 blocks: -21 up to +21
-    const positionInCycle = this.get_blockheight() % 84;
-
-    if (positionInCycle <= 42) {
-      // Going down from +21 to -21
+    if (positionInCycle <= 36) {
+      // First 36 blocks: +18 down to -18
+      // Block 0 = +18, block 36 = -18
       return MAX_HIGH_TIDE - positionInCycle;
     } else {
-      // Going up from -21 to +21
-      return MAX_LOW_TIDE + (positionInCycle - 42);
+      // Next 36 blocks: -18 up to +18
+      // Block 37 = -17, block 72 = +18 (then repeats)
+      return MAX_LOW_TIDE + (positionInCycle - 36);
     }
   }
 
   /**
    * Get the type of tide (high/low) for the current block
+   * Determined by height: positive = HIGH, negative = LOW, zero = HIGH (transition point)
    */
   get_tide_type(): TideType {
-    const positionInCycle = this.get_blockheight() % BLOCKS_PER_LUNAR_CYCLE;
-    const eventNumber = Math.floor(positionInCycle / BLOCKS_PER_TIDAL_EVENT);
-    return eventNumber % 2 === 0 ? TideType.HIGH : TideType.LOW;
+    const height = this.get_tide_height();
+    return height > 0 ? TideType.HIGH : height < 0 ? TideType.LOW : TideType.HIGH;
   }
 
   /**
    * Get the tidal phase (rising/falling/slack) for the current block
+   * Based on position in 72-block cycle
    */
   get_tide_phase(): TidePhase {
-    const positionInCycle = this.get_blockheight() % BLOCKS_PER_LUNAR_CYCLE;
-    const eventNumber = Math.floor(positionInCycle / BLOCKS_PER_TIDAL_EVENT);
-    const blocksIntoEvent = positionInCycle % BLOCKS_PER_TIDAL_EVENT;
-    const isHighTide = eventNumber % 2 === 0;
+    const blockHeight = this.get_blockheight();
+    const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+    const height = this.get_tide_height();
 
-    return this.get_tide_phase_internal(blocksIntoEvent, isHighTide);
+    // Slack high: around blocks 18-27 (near peak of high tide)
+    if (blocksIntoCycle >= SLACK_HIGH_START && blocksIntoCycle <= SLACK_HIGH_END) {
+      return TidePhase.SLACK_HIGH;
+    }
+
+    // Slack low: around blocks 45-54 (near trough of low tide)
+    if (blocksIntoCycle >= SLACK_LOW_START && blocksIntoCycle <= SLACK_LOW_END) {
+      return TidePhase.SLACK_LOW;
+    }
+
+    // Rising phase: first 18 blocks (high tide rising) or blocks 54-72 (low to high transition)
+    if (blocksIntoCycle < 18 || blocksIntoCycle >= 54) {
+      return TidePhase.RISING;
+    }
+
+    // Falling phase: blocks 27-45 (high to low transition)
+    return TidePhase.FALLING;
   }
 
   /**
-   * Internal helper for tide phase calculation
-   */
-  private get_tide_phase_internal(
-    blocksIntoEvent: number,
-    isHighTide: boolean
-  ): TidePhase {
-    // Slack water occurs at peaks and troughs (around blocks 44-52 in each event)
-    if (blocksIntoEvent >= SLACK_WATER_START && blocksIntoEvent <= SLACK_WATER_END) {
-      return isHighTide ? TidePhase.SLACK_HIGH : TidePhase.SLACK_LOW;
-    }
-
-    // Rising in first half, falling in second half
-    if (blocksIntoEvent < SLACK_WATER_MIDPOINT) {
-      return isHighTide ? TidePhase.RISING : TidePhase.FALLING;
-    } else {
-      return isHighTide ? TidePhase.FALLING : TidePhase.RISING;
-    }
-  }
-
-  /**
-   * Calculate blocks until the next tidal event
+   * Calculate blocks until the next high/low point
    */
   get_blocks_until_next_tide(): number {
-    const positionInCycle = this.get_blockheight() % BLOCKS_PER_LUNAR_CYCLE;
-    const blocksIntoEvent = positionInCycle % BLOCKS_PER_TIDAL_EVENT;
-    return BLOCKS_PER_TIDAL_EVENT - blocksIntoEvent;
+    const blockHeight = this.get_blockheight();
+    const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+
+    if (blocksIntoCycle < 36) {
+      // In first half: heading to low tide at block 36
+      return 36 - blocksIntoCycle;
+    } else {
+      // In second half: heading to high tide at block 72 (which is block 0 of next cycle)
+      return TIDAL_HEIGHT_CYCLE_LENGTH - blocksIntoCycle;
+    }
   }
 
   /**
-   * Get the block height of the next tidal event
+   * Get the block height of the next high/low point
    */
   get_next_tide_block(): number {
     return this.get_blockheight() + this.get_blocks_until_next_tide();
   }
 
   /**
-   * Get information about the full tidal cycle for a lunar month
+   * Get information about the current tidal height cycle
    */
   get_tidal_cycle_info(): TidalCycleInfo {
     const blockHeight = this.get_blockheight();
-    const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-    const cycleStartBlock = blockHeight - positionInCycle;
-    const cycleEndBlock = cycleStartBlock + BLOCKS_PER_LUNAR_CYCLE - 1;
+    const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+    const cycleStartBlock = blockHeight - blocksIntoCycle;
+    const cycleEndBlock = cycleStartBlock + TIDAL_HEIGHT_CYCLE_LENGTH - 1;
 
     return {
-      startBlock: cycleStartBlock,
-      endBlock: cycleEndBlock,
-      totalEvents: TIDAL_EVENTS_PER_CYCLE,
-      highTides: COMPLETE_TIDAL_CYCLES,
-      lowTides: COMPLETE_TIDAL_CYCLES,
+      cycleLength: TIDAL_HEIGHT_CYCLE_LENGTH,
+      maxHighTide: MAX_HIGH_TIDE,
+      maxLowTide: MAX_LOW_TIDE,
+      currentCycleStart: cycleStartBlock,
+      currentCycleEnd: cycleEndBlock,
     };
   }
 
@@ -323,7 +323,8 @@ export class Tidal extends Delta {
 
   /**
    * Get a formatted display string for the current tide
-   * Special handling for extreme values (+21/-21): simplified format
+   * Special handling for extreme values (+18/-18): simplified format
+   * Special handling for slack tide values (+17/-17): slack tide format
    * Otherwise: full format with emoji, description, and height
    */
   get_tide_display(): string {
@@ -332,10 +333,18 @@ export class Tidal extends Delta {
 
       // Special case for extreme values
       if (tideHeight === MAX_HIGH_TIDE) {
-        return "🌊 High Tide (+21)";
+        return "🌊 High Tide (+18)";
       }
       if (tideHeight === MAX_LOW_TIDE) {
-        return "🏖️ Low Tide (-21)";
+        return "🏖️ Low Tide (-18)";
+      }
+
+      // Special case for slack tide values
+      if (tideHeight === 17) {
+        return "🌊 Slack Tide (+17)";
+      }
+      if (tideHeight === -17) {
+        return "🏖️ Slack Tide (-17)";
       }
 
       // Standard format for all other values
@@ -357,68 +366,77 @@ export class Tidal extends Delta {
 
 /**
  * Get the type of tide (high/low) for a given block
+ * Determined by height: positive = HIGH, negative = LOW, zero = HIGH (transition point)
  */
 export function getTideType(blockHeight: number): TideType {
-  const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-  const eventNumber = Math.floor(positionInCycle / BLOCKS_PER_TIDAL_EVENT);
-  return eventNumber % 2 === 0 ? TideType.HIGH : TideType.LOW;
+  const height = getTideHeight(blockHeight);
+  return height > 0 ? TideType.HIGH : height < 0 ? TideType.LOW : TideType.HIGH;
 }
 
 /**
  * Calculate tide height in blocks
- * Returns -21 to +21 blocks (integer values)
- * Pattern: +21 at block 0, decrease by 1 each block to -21, then increase by 1 back to +21
- * Pattern: block 0 = +21, block 1 = +20, ..., block 42 = -21, block 43 = -20, ..., block 84 = +21 (then repeats)
+ * Returns -18 to +18 blocks (integer values)
+ * Pattern: +18 at block 0, decrease by 1 each block to -18, then increase by 1 back to +18
+ * System starts at high tide (+18 at block 0)
  * Each block changes by exactly 1 block value
  */
 export function getTideHeight(blockHeight: number): number {
-  const positionInCycle = blockHeight % 84; // 84-block cycle: 42 down + 42 up
+  const positionInCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
 
-  if (positionInCycle <= 42) {
-    // Going down from +21 to -21
+  if (positionInCycle <= 36) {
+    // First 36 blocks: +18 down to -18
+    // Block 0 = +18, block 36 = -18
     return MAX_HIGH_TIDE - positionInCycle;
   } else {
-    // Going up from -21 to +21
-    return MAX_LOW_TIDE + (positionInCycle - 42);
+    // Next 36 blocks: -18 up to +18
+    // Block 37 = -17, block 72 = +18 (then repeats)
+    return MAX_LOW_TIDE + (positionInCycle - 36);
   }
 }
 
 /**
  * Get the tidal phase (rising/falling/slack) for a given block
+ * Based on position in 72-block cycle
  */
 export function getTidePhase(blockHeight: number): TidePhase {
-  const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-  const eventNumber = Math.floor(positionInCycle / BLOCKS_PER_TIDAL_EVENT);
-  const blocksIntoEvent = positionInCycle % BLOCKS_PER_TIDAL_EVENT;
-  const isHighTide = eventNumber % 2 === 0;
+  const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
 
-  // Slack water occurs at peaks and troughs
-  if (
-    blocksIntoEvent >= SLACK_WATER_START &&
-    blocksIntoEvent <= SLACK_WATER_END
-  ) {
-    return isHighTide ? TidePhase.SLACK_HIGH : TidePhase.SLACK_LOW;
+  // Slack high: around blocks 18-27 (near peak of high tide)
+  if (blocksIntoCycle >= SLACK_HIGH_START && blocksIntoCycle <= SLACK_HIGH_END) {
+    return TidePhase.SLACK_HIGH;
   }
 
-  // Rising in first half, falling in second half
-  if (blocksIntoEvent < SLACK_WATER_MIDPOINT) {
-    return isHighTide ? TidePhase.RISING : TidePhase.FALLING;
-  } else {
-    return isHighTide ? TidePhase.FALLING : TidePhase.RISING;
+  // Slack low: around blocks 45-54 (near trough of low tide)
+  if (blocksIntoCycle >= SLACK_LOW_START && blocksIntoCycle <= SLACK_LOW_END) {
+    return TidePhase.SLACK_LOW;
   }
+
+  // Rising phase: first 18 blocks (high tide rising) or blocks 54-72 (low to high transition)
+  if (blocksIntoCycle < 18 || blocksIntoCycle >= 54) {
+    return TidePhase.RISING;
+  }
+
+  // Falling phase: blocks 27-45 (high to low transition)
+  return TidePhase.FALLING;
 }
 
 /**
- * Calculate blocks until the next tidal event
+ * Calculate blocks until the next high/low point
  */
 export function getBlocksUntilNextTide(blockHeight: number): number {
-  const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-  const blocksIntoEvent = positionInCycle % BLOCKS_PER_TIDAL_EVENT;
-  return BLOCKS_PER_TIDAL_EVENT - blocksIntoEvent;
+  const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+
+  if (blocksIntoCycle < 36) {
+    // In first half: heading to low tide at block 36
+    return 36 - blocksIntoCycle;
+  } else {
+    // In second half: heading to high tide at block 72 (which is block 0 of next cycle)
+    return TIDAL_HEIGHT_CYCLE_LENGTH - blocksIntoCycle;
+  }
 }
 
 /**
- * Get the block height of the next tidal event
+ * Get the block height of the next high/low point
  */
 export function getNextTideBlock(blockHeight: number): number {
   return blockHeight + getBlocksUntilNextTide(blockHeight);
@@ -433,19 +451,19 @@ export function getTidalState(blockHeight: number): TidalState {
 }
 
 /**
- * Get information about the full tidal cycle for a lunar month
+ * Get information about the current tidal height cycle
  */
 export function getTidalCycleInfo(blockHeight: number): TidalCycleInfo {
-  const positionInCycle = blockHeight % BLOCKS_PER_LUNAR_CYCLE;
-  const cycleStartBlock = blockHeight - positionInCycle;
-  const cycleEndBlock = cycleStartBlock + BLOCKS_PER_LUNAR_CYCLE - 1;
+  const blocksIntoCycle = blockHeight % TIDAL_HEIGHT_CYCLE_LENGTH;
+  const cycleStartBlock = blockHeight - blocksIntoCycle;
+  const cycleEndBlock = cycleStartBlock + TIDAL_HEIGHT_CYCLE_LENGTH - 1;
 
   return {
-    startBlock: cycleStartBlock,
-    endBlock: cycleEndBlock,
-    totalEvents: TIDAL_EVENTS_PER_CYCLE,
-    highTides: COMPLETE_TIDAL_CYCLES,
-    lowTides: COMPLETE_TIDAL_CYCLES,
+    cycleLength: TIDAL_HEIGHT_CYCLE_LENGTH,
+    maxHighTide: MAX_HIGH_TIDE,
+    maxLowTide: MAX_LOW_TIDE,
+    currentCycleStart: cycleStartBlock,
+    currentCycleEnd: cycleEndBlock,
   };
 }
 
@@ -489,7 +507,8 @@ export function getTideEmoji(blockHeight: number): string {
 
 /**
  * Get a formatted display string for the current tide
- * Special handling for extreme values (+21/-21): simplified format
+ * Special handling for extreme values (+18/-18): simplified format
+ * Special handling for slack tide values (+17/-17): slack tide format
  * Otherwise: full format with emoji, description, and height
  */
 export function getTideDisplay(blockHeight: number): string {

@@ -102,35 +102,35 @@ The Atmosphere module monitors block metrics and conditions. Features include:
 ### Tidal Module
 The Tidal module tracks and calculates tidal cycles based on Bitcoin blockheight. Features include:
 - Current tide type (high/low) tracking
-- Tide height calculations using linear mapping (-21 to +21 blocks)
+- Tide height calculations using linear mapping (-18 to +18 blocks)
 - Tidal phase detection (rising/falling/slack_high/slack_low)
-- Blocks until next tidal event
+- Blocks until next high/low point
 - Spring and neap tide detection aligned with moon phases
 - Complete tidal cycle information and state
 - Human-readable descriptions and emoji representations
-- Formatted tide display strings with special handling for extreme values (+21/-21)
+- Formatted tide display strings with special handling for extreme values (+18/-18)
 
 #### Tidal System
 
-The Observatory tracks 42 tidal events per lunar cycle (4,032 blocks), creating a natural rhythm of 21 high tides and 21 low tides. Each tidal event spans 96 blocks (~16 hours), with complete high-to-low-to-high cycles taking 192 blocks (~32 hours).
+The tidal system uses a continuous 72-block cycle that repeats indefinitely. The system starts at high tide (+18 at block 0), decreases to low tide (-18 at block 36), then increases back to high tide (+18 at block 72), creating two high tides per cycle.
 
-This tidal system embeds Bitcoin's iconic number 21 into the temporal fabric of the Observatory, creating perfect mathematical alignment where each lunar cycle completes exactly 42 tidal events.
+This creates a natural rhythm where each 72-block cycle (~12 hours at 10-minute block intervals) contains two high tides and one low tide, giving the system a predictable pattern that repeats continuously.
 
 ##### Tidal Calculations
 
 The tidal system uses a simple linear mapping to represent block height in tidal form - it's a deterministic representation, not a physical simulation.
 
-- High tides: linear decrease from +21 blocks (start of event) to 0 blocks (end of event)
-- Low tides: linear decrease from 0 blocks (start of event) to -21 blocks (end of event)
-- Slack water occurs at blocks 44-52 within each event (peak/trough window)
+- **First 36 blocks**: Linear decrease from +18 blocks (block 0) to -18 blocks (block 36)
+- **Next 36 blocks**: Linear increase from -18 blocks (block 37) to +18 blocks (block 72, then repeats)
+- **Slack water**: Occurs at blocks 18-27 (slack high) and blocks 45-54 (slack low)
 
 **API Methods:**
 - Current tide type: `getTideType(blockHeight)` or `tidal.get_tide_type()`
-- Tide height (-21 to +21 blocks): `getTideHeight(blockHeight)` or `tidal.get_tide_height()`
+- Tide height (-18 to +18 blocks): `getTideHeight(blockHeight)` or `tidal.get_tide_height()`
 - Tide phase: `getTidePhase(blockHeight)` or `tidal.get_tide_phase()`
 - Complete tidal state: `getTidalState(blockHeight)` or `tidal.get_tidal_state()`
 - Blocks until next tide: `getBlocksUntilNextTide(blockHeight)` or `tidal.get_blocks_until_next_tide()`
-- Tide display string: `getTideDisplay(blockHeight)` or `tidal.get_tide_display()` - Returns formatted display with simplified format for +21/-21 extremes
+- Tide display string: `getTideDisplay(blockHeight)` or `tidal.get_tide_display()` - Returns formatted display with simplified format for +18/-18 extremes
 - Special conditions: Spring tides align with new/full moons, neap tides with quarter moons
 
 ## Development
