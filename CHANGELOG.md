@@ -1,5 +1,11 @@
 # @joinnextblock/telescope
 
+## 0.2.0
+
+### Minor Changes
+
+- feature: change tides to a 72 block cycle
+
 ## 0.1.0
 
 ### Minor Changes
