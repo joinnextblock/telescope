@@ -38,6 +38,30 @@ jobs:
       if: matrix.runner == 'node'
       run: npm install
     
+    - name: Type-check (Bun)
+      if: matrix.runner == 'bun'
+      run: bunx tsc --noEmit
+    
+    - name: Type-check (Node)
+      if: matrix.runner == 'node'
+      run: npx tsc --noEmit
+    
+    - name: Build project (Bun)
+      if: matrix.runner == 'bun'
+      run: bun run build
+    
+    - name: Build project (Node)
+      if: matrix.runner == 'node'
+      run: npm run build
+    
+    - name: Lint code (Bun)
+      if: matrix.runner == 'bun'
+      run: bun run lint
+    
+    - name: Lint code (Node)
+      if: matrix.runner == 'node'
+      run: npm run lint
+    
     - name: Run tests (Bun)
       if: matrix.runner == 'bun'
       run: bun test --coverage
