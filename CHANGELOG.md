@@ -1,5 +1,11 @@
 # @joinnextblock/telescope
 
+## 0.2.1
+
+### Patch Changes
+
+- 4322685: chore: open source software
+
 ## 0.2.0
 
 ### Minor Changes
