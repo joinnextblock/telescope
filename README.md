@@ -198,6 +198,10 @@ const telescope = create_telescope(block);
 ```
 
 
+## Project Status
+
+Telescope is an open-source project maintained by NextBlock for company use. While the code is publicly available and we welcome contributions through pull requests, the project is primarily developed to serve NextBlock's needs. For more information about contributing, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## License
 
 MIT
