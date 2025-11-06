@@ -17,22 +17,26 @@ The Solar module extends the Delta class to provide functionality for tracking a
 ## Usage
 
 ```typescript
-import { solar } from '@joinnextblock/delta';
+import { create_telescope } from '@joinnextblock/telescope';
 
-// Create a new Solar instance with a blockheight
-const solarInstance = solar(100000);
+// Create a Telescope instance from a Bitcoin block
+const block = { height: 100000, difficulty: 1 };
+const telescope = create_telescope(block);
+const solarInstance = telescope.solar;
 
 // Get current season information
-const seasonIndex = solarInstance.get_cycle_phase_index();
-const nextSeasonIndex = solarInstance.get_next_cycle_phase_index();
-const blocksUntilNextSeason = solarInstance.get_blocks_until_next_phase();
-const seasonBlockHeight = solarInstance.get_phase_block_height(); // Returns 0-52499
+const season = solarInstance.get_season(); // Returns { name: string, emoji: string, suffix: string }
+const nextSeason = solarInstance.get_next_season();
+const seasonIndex = solarInstance.get_season_index();
+const nextSeasonIndex = solarInstance.get_next_season_index();
+const blocksUntilNextSeason = solarInstance.get_blocks_until_next_season();
+const seasonBlockHeight = solarInstance.get_season_block_height(); // Returns 0-52499
 
 // Get cycle information
 const blocksUntilNextCycle = solarInstance.get_blocks_until_next_cycle();
 const cycleBlockHeight = solarInstance.get_cycle_block_height();
 const position = solarInstance.get_position_in_cycle();
-const seasonalPosition = solarInstance.get_seasonal_position();
+const seasonalPosition = solarInstance.get_season_position();
 ```
 
 ## Solar Seasons
@@ -45,29 +49,33 @@ The module tracks 4 solar seasons, each lasting 52,500 blocks (210,000/4):
 
 ## API Reference
 
-### Constructor
+### Accessing Solar Module
+
+The Solar module is accessed through a Telescope instance:
 
 ```typescript
-solar(blockheight?: number): Solar
-```
+import { create_telescope } from '@joinnextblock/telescope';
 
-Creates a new Solar instance.
-- `blockheight` (optional): A non-negative integer representing the Bitcoin blockheight
-- Returns: A new Solar instance
+const block = { height: 100000, difficulty: 1 };
+const telescope = create_telescope(block);
+const solar = telescope.solar;
+```
 
 ### Season Functions
 
-- `get_cycle_phase_index(): number` - Returns the current season index (0-3)
-- `get_next_cycle_phase_index(): number` - Returns the next season index
-- `get_blocks_until_next_phase(): number` - Returns blocks until the next season (0-52500)
-- `get_phase_block_height(): number` - Returns the block height within the current season (0-52499)
-- `get_seasonal_position(): number` - Returns the position within the current season (0-52499)
+- `get_season(): { name: string, emoji: string, suffix: string }` - Returns the current season object
+- `get_next_season(): { name: string, emoji: string, suffix: string }` - Returns the next season object
+- `get_season_index(): number` - Returns the current season index (0-3)
+- `get_next_season_index(): number` - Returns the next season index
+- `get_blocks_until_next_season(): number` - Returns blocks until the next season (1-52500)
+- `get_season_block_height(): number` - Returns the block height within the current season (0-52499)
+- `get_season_position(): number` - Returns the position within the current season (0-52499)
 
 ### Cycle Functions
 
 - `get_blocks_until_next_cycle(): number` - Returns blocks until the next cycle
-- `get_cycle_block_height(): number` - Returns the block height within the current cycle
-- `get_position_in_cycle(): number` - Returns the position within the current cycle
+- `get_cycle_block_height(): number` - Returns the block height within the current cycle (0-209999)
+- `get_position_in_cycle(): number` - Returns the position within the current cycle (0-209999)
 
 ## Constants
 
