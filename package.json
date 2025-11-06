@@ -35,7 +35,7 @@
     "bitcoin-blockheight-calculations",
     "bitcoin-time-calculations"
   ],
-  "author": "",
+  "author": "NextBlock",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",
