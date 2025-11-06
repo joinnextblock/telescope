@@ -15,10 +15,18 @@ Atmosphere is a utility class that helps calculate conditions based on block wei
 ## Usage
 
 ```typescript
-import { create_atmosphere } from './atmosphere';
+import { create_telescope, BITCOIN } from '@joinnextblock/telescope';
 
-// Create a new atmosphere instance
-const atmosphere = create_atmosphere(weight, transaction_count);
+// Create a Telescope instance from a Bitcoin block
+const block: BITCOIN.Block = {
+  height: 901152,
+  difficulty: 126411437451912.23,
+  weight: 3997853,
+  tx_count: 2330,
+};
+
+const telescope = create_telescope(block);
+const atmosphere = telescope.atmosphere;
 
 // Get the current weight
 const weight = atmosphere.get_weight();
@@ -32,20 +40,37 @@ const conditions = atmosphere.get_conditions();
 
 ## API Reference
 
+### Accessing Atmosphere Module
+
+The Atmosphere module is accessed through a Telescope instance:
+
+```typescript
+import { create_telescope, BITCOIN } from '@joinnextblock/telescope';
+
+const block: BITCOIN.Block = { 
+  height: 901152, 
+  difficulty: 1,
+  weight: 3997853,
+  tx_count: 2330,
+};
+const telescope = create_telescope(block);
+const atmosphere = telescope.atmosphere;
+```
+
 ### `Atmosphere` Class
 
 #### Constructor
 ```typescript
 constructor(weight: number, transaction_count: number)
 ```
-- `weight`: The weight of the atmosphere
-- `transaction_count`: The number of transactions
+- `weight`: The block weight (0 to MAX_BLOCK_WEIGHT = 4,000,000)
+- `transaction_count`: The number of transactions in the block
 
 #### Methods
 
-- `get_weight()`: Returns the current weight
-- `get_transaction_count()`: Returns the current transaction count
-- `get_conditions()`: Calculates and returns the conditions based on utilization
+- `get_weight(): number` - Returns the current block weight
+- `get_transaction_count(): number` - Returns the current transaction count
+- `get_conditions(): number` - Calculates and returns the conditions based on utilization (rounded to 2 decimal places)
 
 ### Factory Function
 
@@ -53,7 +78,7 @@ constructor(weight: number, transaction_count: number)
 ```typescript
 create_atmosphere(weight: number, transaction_count: number): Atmosphere
 ```
-Creates a new Atmosphere instance with the specified weight and transaction count.
+Creates a new Atmosphere instance with the specified weight and transaction count. This is typically called internally by `create_telescope`.
 
 ## Implementation Details
 

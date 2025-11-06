@@ -46,4 +46,34 @@ describe("Delta", () => {
     expect(deltaInstance.get_blockheight_from_date(date)).toBe(841138);
   });
 
+    it("should format the date correctly", () => {
+      const deltaInstance = create_delta(210000); // Exactly 1 halving
+      const formattedDate = deltaInstance.get_formatted_date(0, 1, 100);
+      expect(formattedDate).toBe("AG_1_1_2_0100");
+    });
+
+    it("should format the date correctly for genesis block", () => {
+      const deltaInstance = create_delta(0);
+      const formattedDate = deltaInstance.get_formatted_date(0, 0, 0);
+      expect(formattedDate).toBe("AG_0_1_1_0000");
+    });
+
+    it("should format the date correctly for multiple halvings", () => {
+      const deltaInstance = create_delta(630000); // 3 halvings
+      const formattedDate = deltaInstance.get_formatted_date(2, 3, 500);
+      expect(formattedDate).toBe("AG_3_3_4_0500");
+    });
+
+    it("should format the date correctly with max position in cycle", () => {
+      const deltaInstance = create_delta(210000);
+      const formattedDate = deltaInstance.get_formatted_date(0, 1, 4032);
+      expect(formattedDate).toBe("AG_1_1_2_4032");
+    });
+
+    it("should pad single digit position with zeros", () => {
+      const deltaInstance = create_delta(100000);
+      const formattedDate = deltaInstance.get_formatted_date(0, 0, 5);
+      expect(formattedDate).toBe("AG_0_1_1_0005");
+    });
+
 });
