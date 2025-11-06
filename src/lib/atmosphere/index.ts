@@ -25,6 +25,8 @@ export class Atmosphere {
   }
 
   get_conditions(): number {
+    // console.log('🔍 Atmosphere: weight:', this.weight);
+    // console.log('🔍 Atmosphere: transaction_count:', this.transaction_count);
     const utilization = this.weight / MAX_BLOCK_WEIGHT;
     const conditions = this.transaction_count / utilization;
     return Number(conditions.toFixed(2));

@@ -38,5 +38,29 @@ describe("telescope", () => {
     // atmosphere
     expect(telescope.atmosphere.get_weight()).toBe(block.weight);
     expect(telescope.atmosphere.get_transaction_count()).toBe(block.tx_count);
+
+    // tidal
+    expect(telescope.tidal.get_blockheight()).toBe(block.height);
+
+    // formatted date
+    const formattedDate = telescope.get_formatted_date();
+    expect(formattedDate).toMatch(/^AG_\d+_\d+_\d+_\d{4}$/);
+    expect(typeof formattedDate).toBe("string");
+  });
+
+  it("should format date correctly", () => {
+    const telescope = create_telescope(block);
+    const formattedDate = telescope.get_formatted_date();
+    
+    // Verify the format matches the expected pattern: AG_halving_season_moon_position_in_cycle
+    const parts = formattedDate.split("_");
+    expect(parts.length).toBe(5);
+    expect(parts[0]).toBe("AG"); // Era prefix
+    expect(parts[4]).toMatch(/^\d{4}$/); // Position should be 4 digits
+    
+    // Verify it matches the manual calculation with padded position
+    const paddedPosition = String(telescope.lunar.get_position_in_cycle()).padStart(4, '0');
+    const expectedFormat = `AG_${Math.floor(telescope.delta.get_blockheight() / 210000)}_${telescope.solar.get_season_index() + 1}_${telescope.lunar.get_cycle_index() + 1}_${paddedPosition}`;
+    expect(formattedDate).toBe(expectedFormat);
   });
 });
