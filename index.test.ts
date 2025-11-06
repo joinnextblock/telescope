@@ -1,5 +1,4 @@
-import { create_telescope } from "./index";
-import { BITCOIN } from "./index.d";
+import { create_telescope, BITCOIN } from "./index";
 import { GENESIS_BLOCK_DATE, GENESIS_BLOCK_HEIGHT } from "./src/lib/constants";
 
 describe("telescope", () => {

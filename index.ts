@@ -3,10 +3,10 @@ import { create_delta, Delta } from "./src/lib/delta";
 import { create_lunar, Lunar } from "./src/lib/lunar";
 import { create_solar, Solar } from "./src/lib/solar";
 import { create_tidal, Tidal } from "./src/lib/tidal";
-import { BITCOIN, NEXTBLOCK } from "./index.d";
+import type { BITCOIN, NEXTBLOCK } from "./index.d";
 
 // Re-export type namespaces for public API
-export { BITCOIN, NEXTBLOCK };
+export type { BITCOIN, NEXTBLOCK };
 
 export interface Telescope {
   delta: Delta;
